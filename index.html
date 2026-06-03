@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Legend Service Scheduler</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Legend Service Scheduler</h1>
+          <p>AI-assisted shop scheduling for work orders, technicians, skills, and capacity.</p>
+        </div>
+        <div class="top-actions">
+          <div class="auth-strip">
+            <span id="sessionStatus">Demo dispatcher</span>
+            <select id="loginUser">
+              <option value="dispatcher">Dispatcher</option>
+              <option value="manager">Manager</option>
+              <option value="technician">Technician</option>
+              <option value="admin">Admin</option>
+            </select>
+            <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN">
+            <button id="loginBtn" class="ghost">Login</button>
+            <button id="logoutBtn" class="ghost">Logout</button>
+          </div>
+          <button id="generatePlanBtn" class="ghost">Morning AI Plan</button>
+          <button id="approvePlanBtn" class="ghost">Approve Plan</button>
+          <button id="rescheduleBtn" class="ghost">What Changed?</button>
+          <button id="exportBtn" class="ghost">Export / Backup</button>
+          <button id="importBtn" class="ghost">Import / Restore</button>
+          <button id="salesforceImportBtn" class="ghost">Salesforce Import</button>
+          <button id="salesforceExportBtn" class="ghost">Salesforce Export</button>
+          <button id="seedBtn" class="ghost">Reset Seed Data</button>
+          <button id="optimizeBtn" class="primary">Schedule with AI</button>
+          <input id="importFile" type="file" accept="application/json" hidden>
+          <input id="salesforceImportFile" type="file" accept="application/json" hidden>
+        </div>
+      </header>
+
+      <section class="metrics" id="metrics"></section>
+
+      <nav class="tabs" aria-label="Views">
+        <button class="tab active" data-view="dispatch">Dispatch Board</button>
+        <button class="tab" data-view="dashboard">Manager Dashboard</button>
+        <button class="tab" data-view="orders">Work Orders</button>
+        <button class="tab" data-view="techs">Technicians</button>
+        <button class="tab" data-view="types">Work Types</button>
+        <button class="tab" data-view="mobile">Technician View</button>
+      </nav>
+
+      <main>
+        <section id="dispatch" class="view active">
+          <div class="toolbar">
+            <div class="segmented">
+              <button class="active" data-board="day">Day</button>
+              <button data-board="week">Week</button>
+            </div>
+            <label>Date <input type="date" id="boardDate"></label>
+            <label>Technician <select id="manualTech"></select></label>
+            <label>Start <input type="time" id="manualStart" value="08:00"></label>
+            <label>Absent Tech <select id="absenceTech"><option value="">None</option></select></label>
+            <label>Absent Date <input type="date" id="absenceDate"></label>
+            <label>Overrun Job <select id="overrunOrder"><option value="">Choose scheduled job</option></select></label>
+            <label>Extra Hours <input type="number" id="overrunHours" min="0.25" step="0.25" value="1"></label>
+            <label>AI Goal
+              <select id="schedulerMode">
+                <option value="balanced">Balanced</option>
+                <option value="delivery">Protect Delivery Dates</option>
+                <option value="utilization">Balance Utilization</option>
+                <option value="warranty">Critical Warranty First</option>
+              </select>
+            </label>
+            <button id="manualAssignBtn">Assign Selected</button>
+            <button id="markAbsentBtn">Mark Absent + Replan</button>
+            <button id="markOverrunBtn">Job Runs Long + Replan</button>
+            <button id="undoBtn" class="ghost">Undo</button>
+            <button id="redoBtn" class="ghost">Redo</button>
+          </div>
+          <div class="toolbar compact-toolbar">
+            <label>Team <select id="filterTeam"><option value="">All teams</option></select></label>
+            <label>Skill <select id="filterSkill"><option value="">All skills</option></select></label>
+            <label>Status <select id="filterStatus"><option value="">All status</option></select></label>
+            <label>Parts <select id="filterParts"><option value="">All parts</option></select></label>
+            <label>Due Before <input type="date" id="filterDue"></label>
+            <label>Customer / Boat <input id="filterText" placeholder="Search"></label>
+            <label>Saved View <select id="savedViewSelect"><option value="">Choose view</option></select></label>
+            <button id="applySavedViewBtn">Apply View</button>
+            <label>Save As <input id="saveViewName" placeholder="Service morning"></label>
+            <button id="saveViewBtn">Save View</button>
+          </div>
+          <div id="conflictBanner" class="conflict-banner"></div>
+          <div class="dispatch-layout">
+            <aside class="queue-panel">
+              <div class="panel-head">
+                <h2>Unscheduled</h2>
+                <span id="unscheduledCount"></span>
+              </div>
+              <div id="unscheduledQueue" class="queue"></div>
+            </aside>
+            <section class="board-wrap">
+              <div id="dispatchBoard" class="dispatch-board"></div>
+            </section>
+          </div>
+          <section class="recommendations">
+            <div class="panel-head">
+              <h2>AI Scheduling Notes</h2>
+              <span id="recommendationCount"></span>
+            </div>
+            <div id="recommendations"></div>
+          </section>
+          <section class="recommendations">
+            <div class="panel-head">
+              <h2>Morning AI Plan</h2>
+              <span id="planCount"></span>
+            </div>
+            <div id="aiPlan"></div>
+          </section>
+          <section class="recommendations">
+            <div class="panel-head">
+              <h2>What Changed</h2>
+              <span id="scenarioCount"></span>
+            </div>
+            <div id="scenarioDiff"></div>
+          </section>
+        </section>
+
+        <section id="dashboard" class="view">
+          <div class="dashboard-grid">
+            <section class="recommendations">
+              <div class="panel-head">
+                <h2>Bottlenecks & Risk</h2>
+                <span id="riskCount"></span>
+              </div>
+              <div id="riskList"></div>
+            </section>
+            <section class="recommendations">
+              <div class="panel-head">
+                <h2>Audit Log</h2>
+                <div class="panel-actions">
+                  <span id="auditCount"></span>
+                  <button id="auditRefreshBtn" class="ghost">Refresh</button>
+                </div>
+              </div>
+              <div id="auditLog"></div>
+            </section>
+            <section class="recommendations">
+              <div class="panel-head">
+                <h2>Operational Readiness</h2>
+                <button id="readinessRefreshBtn" class="ghost">Refresh</button>
+              </div>
+              <div id="readinessPanel"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="orders" class="view">
+          <div class="split">
+            <form id="orderForm" class="editor">
+              <h2>Create / Edit Work Order</h2>
+              <input type="hidden" id="orderId">
+              <label>Title <input id="orderTitle" required></label>
+              <label>Customer <input id="orderCustomer" placeholder="Customer, stock, or internal owner"></label>
+              <label>Dealer <input id="orderDealer" placeholder="Dealer name if applicable"></label>
+              <label>Boat / Unit / Ref <input id="orderBoat" required></label>
+              <label>Work Type <select id="orderType"></select></label>
+              <label>Priority <select id="orderPriority"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select></label>
+              <label>Customer Urgency <select id="orderUrgency"><option>Escalated</option><option>Delivery Promise</option><option selected>Normal</option><option>Flexible</option></select></label>
+              <label>Due Date <input type="date" id="orderDue" required></label>
+              <label>Duration (hours) <input type="number" id="orderDuration" min="0.5" step="0.5" required></label>
+              <label>Required Skills <input id="orderSkills" placeholder="Mechanical, Rigging"></label>
+              <label>Required Certifications <input id="orderCerts" placeholder="PDI Signoff, NMEA"></label>
+              <label>Preferred Technician <select id="orderPreferredTech"><option value="">No preference</option></select></label>
+              <label>Continuity Technician <select id="orderContinuityTech"><option value="">Auto from unit history</option></select></label>
+              <label>Parts Readiness
+                <select id="orderParts">
+                  <option>Ready</option>
+                  <option>Staged</option>
+                  <option>Waiting on Parts</option>
+                  <option>Backordered</option>
+                </select>
+              </label>
+              <label>Bay / Resource <select id="orderBay"></select></label>
+              <label>Status <select id="orderStatus"><option>Unscheduled</option><option>Scheduled</option><option>In Progress</option><option>Blocked</option><option>Complete</option></select></label>
+              <label>Description <textarea id="orderDescription"></textarea></label>
+              <label>Dependencies / Notes <textarea id="orderNotes"></textarea></label>
+              <div class="form-actions">
+                <button class="primary" type="submit">Save Work Order</button>
+                <button class="ghost" type="button" id="clearOrderBtn">Clear</button>
+              </div>
+            </form>
+            <form id="batchForm" class="editor batch-editor">
+              <h2>Batch Work Orders</h2>
+              <label>Paste Jobs
+                <textarea id="batchOrders" placeholder="Title | Customer / Unit | Work Type | Priority | Due Date | Notes"></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="primary" type="submit">Create Batch</button>
+                <button class="ghost" type="button" id="sampleBatchBtn">Use Sample Batch</button>
+              </div>
+            </form>
+            <div class="table-wrap">
+              <h2>Work Orders</h2>
+              <table>
+                <thead><tr><th>Order</th><th>Type</th><th>Priority / Urgency</th><th>Due</th><th>Skills</th><th>Parts / Bay</th><th>Status</th><th></th></tr></thead>
+                <tbody id="ordersTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="techs" class="view">
+          <div class="split">
+            <form id="techForm" class="editor">
+              <h2>Create / Edit Technician</h2>
+              <input type="hidden" id="techId">
+              <label>Name <input id="techName" required></label>
+              <label>Role <input id="techRole" required></label>
+              <label>Skills <input id="techSkills" placeholder="Mechanical, Electronics"></label>
+              <label>Certifications <input id="techCerts" placeholder="NMEA, PDI Signoff"></label>
+              <label>Shift Start <input type="time" id="techStart" value="08:00"></label>
+              <label>Shift End <input type="time" id="techEnd" value="16:30"></label>
+              <label>Capacity % <input type="number" id="techCapacity" min="25" max="125" value="100"></label>
+              <label>Shop Area / Team <input id="techArea" required></label>
+              <label class="check"><input type="checkbox" id="techActive" checked> Active</label>
+              <div class="form-actions">
+                <button class="primary" type="submit">Save Technician</button>
+                <button class="ghost" type="button" id="clearTechBtn">Clear</button>
+              </div>
+            </form>
+            <form id="bayForm" class="editor">
+              <h2>Create / Edit Schedulable Resource</h2>
+              <label>Bay / Work Area <input id="bayName" required placeholder="Service Bay 3"></label>
+              <label>Available Start <input type="time" id="bayStart" value="08:00"></label>
+              <label>Available End <input type="time" id="bayEnd" value="17:00"></label>
+              <label>Outage Dates <input id="bayOutages" placeholder="2026-06-03, 2026-06-04"></label>
+              <label>Outage Reason <input id="bayOutageReason" placeholder="Maintenance, cleaning, blocked storage"></label>
+              <div class="form-actions">
+                <button class="primary" type="submit">Save Resource</button>
+                <button class="ghost" type="button" id="clearBayBtn">Clear</button>
+              </div>
+            </form>
+            <div class="cards" id="techCards"></div>
+            <div class="cards" id="bayCards"></div>
+          </div>
+        </section>
+
+        <section id="types" class="view">
+          <div class="split">
+            <form id="typeForm" class="editor">
+              <h2>Create / Edit Work Type</h2>
+              <input type="hidden" id="typeId">
+              <label>Name <input id="typeName" required></label>
+              <label>Default Duration (hours) <input type="number" id="typeDuration" min="0.5" step="0.5" required></label>
+              <label>Required Skills <input id="typeSkills" required></label>
+              <label>Default Notes <textarea id="typeNotes"></textarea></label>
+              <div class="form-actions">
+                <button class="primary" type="submit">Save Work Type</button>
+                <button class="ghost" type="button" id="clearTypeBtn">Clear</button>
+              </div>
+            </form>
+            <div class="cards" id="typeCards"></div>
+          </div>
+        </section>
+
+        <section id="mobile" class="view">
+          <div class="toolbar">
+            <label>Technician <select id="mobileTech"></select></label>
+            <label>Date <input type="date" id="mobileDate"></label>
+          </div>
+          <div id="mobileJobs" class="mobile-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <aside id="detailDrawer" class="drawer" aria-hidden="true">
+      <div class="drawer-head">
+        <h2 id="drawerTitle">Work Order</h2>
+        <button id="closeDrawerBtn">Close</button>
+      </div>
+      <div id="drawerBody" class="drawer-body"></div>
+    </aside>
+
+    <script src="app.js"></script>
+  </body>
+</html>

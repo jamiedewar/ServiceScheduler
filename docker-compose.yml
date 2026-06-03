@@ -1,0 +1,28 @@
+services:
+  legend-service-scheduler:
+    build:
+      context: .
+    image: legend-service-scheduler:latest
+    env_file:
+      - .env.example
+    environment:
+      LEGEND_SCHEDULER_HOST: 0.0.0.0
+      LEGEND_SCHEDULER_PORT: 4173
+    ports:
+      - "4173:4173"
+    volumes:
+      - legend_scheduler_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import json,urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:4173/api/health', timeout=3)); raise SystemExit(0 if data.get('ok') else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  legend_scheduler_data:
