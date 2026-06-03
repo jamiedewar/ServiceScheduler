@@ -30,6 +30,13 @@ let remoteVersion = null;
 let operationalReadiness = null;
 let durableAuditEvents = null;
 
+const demoUsers = {
+  dispatcher: { id: "dispatcher", name: "Demo Dispatcher", role: "dispatcher" },
+  manager: { id: "manager", name: "Demo Manager", role: "manager" },
+  technician: { id: "technician", name: "Demo Technician", role: "technician" },
+  admin: { id: "admin", name: "Demo Admin", role: "admin" }
+};
+
 function defaultSavedViews() {
   const base = { team: "", skill: "", status: "", parts: "", due: "", text: "" };
   return [
@@ -456,15 +463,22 @@ async function saveRemoteState(action = "state.save") {
 }
 
 async function loginAsSelectedUser() {
-  if (!canUseBackend()) return;
   const userId = document.getElementById("loginUser").value;
   const pin = document.getElementById("loginPin").value;
+  if (!canUseBackend()) {
+    switchDemoRole(userId);
+    return;
+  }
   try {
     const response = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, pin })
     });
+    if ([404, 405, 501].includes(response.status)) {
+      switchDemoRole(userId);
+      return;
+    }
     if (!response.ok) throw new Error(`Login failed: ${response.status}`);
     const body = await response.json();
     session = { token: body.token, user: body.user, expiresAt: body.expiresAt };
@@ -480,6 +494,15 @@ async function loginAsSelectedUser() {
     console.warn("Login failed.", error);
     alert("Login failed. Check that the backend server is running.");
   }
+}
+
+function switchDemoRole(userId) {
+  session = { token: "", user: demoUsers[userId] || demoUsers.dispatcher, expiresAt: "" };
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  document.getElementById("loginPin").value = "";
+  audit(`Switched demo role to ${session.user.name} (${session.user.role})`);
+  renderAuth();
+  render();
 }
 
 async function logoutSession() {
@@ -509,6 +532,20 @@ function renderAuth() {
   } else {
     status.textContent = "Demo dispatcher";
   }
+  updateRoleHint();
+}
+
+function updateRoleHint() {
+  const hint = document.getElementById("roleHint");
+  if (!hint) return;
+  const role = currentRole();
+  const copy = {
+    technician: "Technician view for today's assigned jobs, progress, checklists, and notes.",
+    dispatcher: "Dispatch board for assigning work, balancing the day, and handling exceptions.",
+    manager: "Manager view with schedule health, dispatch controls, and master-data oversight.",
+    admin: "Admin view with full dispatch, configuration, import, export, and readiness tools."
+  };
+  hint.textContent = copy[role] || copy.dispatcher;
 }
 
 function uid(prefix) { return `${prefix}-${Math.random().toString(36).slice(2, 9)}`; }
@@ -601,8 +638,15 @@ function bindEvents() {
 }
 
 function showView(view) {
+  if (document.querySelector(`.tab[data-view="${view}"]`)?.hidden) {
+    view = firstVisibleView();
+  }
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === view));
   document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === view));
+}
+
+function firstVisibleView() {
+  return [...document.querySelectorAll(".tab")].find(tab => !tab.hidden)?.dataset.view || "dispatch";
 }
 
 function render() {
@@ -2699,6 +2743,8 @@ function canManageOperations() {
 
 function applyRolePermissions() {
   const role = currentRole();
+  document.body.dataset.role = role;
+  updateRoleHint();
   const canWrite = canWriteOperations();
   const canAdmin = canManageOperations();
   const writeIds = ["optimizeBtn", "approvePlanBtn", "manualAssignBtn", "markAbsentBtn", "markOverrunBtn", "seedBtn", "exportBtn", "salesforceImportBtn", "salesforceExportBtn"];
@@ -2713,6 +2759,19 @@ function applyRolePermissions() {
   ["techForm", "typeForm", "bayForm"].forEach(id => {
     document.querySelectorAll(`#${id} input, #${id} select, #${id} textarea, #${id} button`).forEach(el => { el.disabled = !canAdmin; });
   });
+  const visibleViewsByRole = {
+    technician: ["mobile"],
+    dispatcher: ["dispatch", "orders", "mobile"],
+    manager: ["dispatch", "dashboard", "orders", "techs", "types", "mobile"],
+    admin: ["dispatch", "dashboard", "orders", "techs", "types", "mobile"]
+  };
+  const visible = visibleViewsByRole[role] || visibleViewsByRole.dispatcher;
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.hidden = !visible.includes(tab.dataset.view);
+  });
+  if (document.querySelector(".tab.active")?.hidden) {
+    showView(firstVisibleView());
+  }
 }
 
 function undoLastAction() {

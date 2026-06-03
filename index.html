@@ -9,9 +9,9 @@
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <div>
+        <div class="brand-block">
           <h1>Legend Service Scheduler</h1>
-          <p>AI-assisted shop scheduling for work orders, technicians, skills, and capacity.</p>
+          <p id="roleHint">Dispatch board for work orders, technicians, skills, and capacity.</p>
         </div>
         <div class="top-actions">
           <div class="auth-strip">
@@ -26,15 +26,27 @@
             <button id="loginBtn" class="ghost">Login</button>
             <button id="logoutBtn" class="ghost">Logout</button>
           </div>
-          <button id="generatePlanBtn" class="ghost">Morning AI Plan</button>
-          <button id="approvePlanBtn" class="ghost">Approve Plan</button>
-          <button id="rescheduleBtn" class="ghost">What Changed?</button>
-          <button id="exportBtn" class="ghost">Export / Backup</button>
-          <button id="importBtn" class="ghost">Import / Restore</button>
-          <button id="salesforceImportBtn" class="ghost">Salesforce Import</button>
-          <button id="salesforceExportBtn" class="ghost">Salesforce Export</button>
-          <button id="seedBtn" class="ghost">Reset Seed Data</button>
           <button id="optimizeBtn" class="primary">Schedule with AI</button>
+          <details class="action-menu">
+            <summary>Planning tools</summary>
+            <div class="menu-panel">
+              <button id="generatePlanBtn" class="ghost">Morning AI Plan</button>
+              <button id="approvePlanBtn" class="ghost">Approve Plan</button>
+              <button id="rescheduleBtn" class="ghost">What Changed?</button>
+              <button id="undoBtn" class="ghost">Undo</button>
+              <button id="redoBtn" class="ghost">Redo</button>
+            </div>
+          </details>
+          <details class="action-menu admin-menu">
+            <summary>Admin / data</summary>
+            <div class="menu-panel">
+              <button id="exportBtn" class="ghost">Export / Backup</button>
+              <button id="importBtn" class="ghost">Import / Restore</button>
+              <button id="salesforceImportBtn" class="ghost">Salesforce Import</button>
+              <button id="salesforceExportBtn" class="ghost">Salesforce Export</button>
+              <button id="seedBtn" class="ghost">Reset Seed Data</button>
+            </div>
+          </details>
           <input id="importFile" type="file" accept="application/json" hidden>
           <input id="salesforceImportFile" type="file" accept="application/json" hidden>
         </div>
@@ -53,18 +65,12 @@
 
       <main>
         <section id="dispatch" class="view active">
-          <div class="toolbar">
+          <div class="toolbar primary-toolbar">
             <div class="segmented">
               <button class="active" data-board="day">Day</button>
               <button data-board="week">Week</button>
             </div>
             <label>Date <input type="date" id="boardDate"></label>
-            <label>Technician <select id="manualTech"></select></label>
-            <label>Start <input type="time" id="manualStart" value="08:00"></label>
-            <label>Absent Tech <select id="absenceTech"><option value="">None</option></select></label>
-            <label>Absent Date <input type="date" id="absenceDate"></label>
-            <label>Overrun Job <select id="overrunOrder"><option value="">Choose scheduled job</option></select></label>
-            <label>Extra Hours <input type="number" id="overrunHours" min="0.25" step="0.25" value="1"></label>
             <label>AI Goal
               <select id="schedulerMode">
                 <option value="balanced">Balanced</option>
@@ -73,13 +79,24 @@
                 <option value="warranty">Critical Warranty First</option>
               </select>
             </label>
+          </div>
+          <details class="tool-panel">
+            <summary>Manual assignment and exceptions</summary>
+            <div class="toolbar embedded-toolbar">
+            <label>Technician <select id="manualTech"></select></label>
+            <label>Start <input type="time" id="manualStart" value="08:00"></label>
+            <label>Absent Tech <select id="absenceTech"><option value="">None</option></select></label>
+            <label>Absent Date <input type="date" id="absenceDate"></label>
+            <label>Overrun Job <select id="overrunOrder"><option value="">Choose scheduled job</option></select></label>
+            <label>Extra Hours <input type="number" id="overrunHours" min="0.25" step="0.25" value="1"></label>
             <button id="manualAssignBtn">Assign Selected</button>
             <button id="markAbsentBtn">Mark Absent + Replan</button>
             <button id="markOverrunBtn">Job Runs Long + Replan</button>
-            <button id="undoBtn" class="ghost">Undo</button>
-            <button id="redoBtn" class="ghost">Redo</button>
-          </div>
-          <div class="toolbar compact-toolbar">
+            </div>
+          </details>
+          <details class="tool-panel">
+            <summary>Filters and saved views</summary>
+            <div class="toolbar compact-toolbar embedded-toolbar">
             <label>Team <select id="filterTeam"><option value="">All teams</option></select></label>
             <label>Skill <select id="filterSkill"><option value="">All skills</option></select></label>
             <label>Status <select id="filterStatus"><option value="">All status</option></select></label>
@@ -90,7 +107,8 @@
             <button id="applySavedViewBtn">Apply View</button>
             <label>Save As <input id="saveViewName" placeholder="Service morning"></label>
             <button id="saveViewBtn">Save View</button>
-          </div>
+            </div>
+          </details>
           <div id="conflictBanner" class="conflict-banner"></div>
           <div class="dispatch-layout">
             <aside class="queue-panel">
@@ -104,27 +122,18 @@
               <div id="dispatchBoard" class="dispatch-board"></div>
             </section>
           </div>
-          <section class="recommendations">
-            <div class="panel-head">
-              <h2>AI Scheduling Notes</h2>
-              <span id="recommendationCount"></span>
-            </div>
+          <details class="recommendations insight-panel">
+            <summary><span>AI Scheduling Notes</span><span id="recommendationCount"></span></summary>
             <div id="recommendations"></div>
-          </section>
-          <section class="recommendations">
-            <div class="panel-head">
-              <h2>Morning AI Plan</h2>
-              <span id="planCount"></span>
-            </div>
+          </details>
+          <details class="recommendations insight-panel" open>
+            <summary><span>Morning AI Plan</span><span id="planCount"></span></summary>
             <div id="aiPlan"></div>
-          </section>
-          <section class="recommendations">
-            <div class="panel-head">
-              <h2>What Changed</h2>
-              <span id="scenarioCount"></span>
-            </div>
+          </details>
+          <details class="recommendations insight-panel">
+            <summary><span>What Changed</span><span id="scenarioCount"></span></summary>
             <div id="scenarioDiff"></div>
-          </section>
+          </details>
         </section>
 
         <section id="dashboard" class="view">
