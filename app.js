@@ -763,7 +763,7 @@ function renderBoard() {
     html += `<div class="tech-head">${t.name}<small>${t.area} | ${t.skills.join(", ")} | ${Math.round(utilization)}% used</small></div>`;
     days.forEach(day => {
       const jobs = scheduledInstancesFor(t.id, day).filter(({ order }) => filteredOrders([order]).length).sort((a,b) => a.segment.start - b.segment.start);
-      html += `<div class="board-cell" data-drop-tech="${t.id}" data-drop-day="${day}">${jobs.map(scheduledCard).join("") || `<span class="muted">${isTechAbsent(t.id, day) ? "Absent" : "Open capacity"}</span>`}</div>`;
+      html += `<div class="board-cell" data-drop-tech="${t.id}" data-drop-day="${day}">${jobs.map(scheduledCard).join("") || (isTechAbsent(t.id, day) ? `<span class="muted">Absent</span>` : "")}</div>`;
     });
   });
   html += `</div>`;
@@ -796,7 +796,7 @@ function renderDayTimeSlotBoard() {
         .sort((a, b) => minutes(a.segment.start) - minutes(b.segment.start));
       const startLabel = timeFromMinutes(slot);
       html += `<div class="board-cell time-drop-cell" data-drop-tech="${t.id}" data-drop-day="${day}" data-drop-start="${startLabel}">
-        ${jobs.map(scheduledCard).join("") || `<span class="muted">${isTechAbsent(t.id, day) ? "Absent" : "Open at " + startLabel}</span>`}
+        ${jobs.map(scheduledCard).join("") || (isTechAbsent(t.id, day) ? `<span class="muted">Absent</span>` : "")}
       </div>`;
     });
   });
@@ -2743,7 +2743,7 @@ function canManageOperations() {
 
 function applyRolePermissions() {
   const role = currentRole();
-  document.body.dataset.role = role;
+  if (document.body) document.body.dataset.role = role;
   updateRoleHint();
   const canWrite = canWriteOperations();
   const canAdmin = canManageOperations();

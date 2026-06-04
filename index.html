@@ -8,62 +8,76 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
+      <aside class="sidebar">
         <div class="brand-block">
-          <h1>Legend Service Scheduler</h1>
-          <p id="roleHint">Dispatch board for work orders, technicians, skills, and capacity.</p>
+          <span class="app-mark">L</span>
+          <div>
+            <h1>Service Scheduler</h1>
+            <p>Legend Boats</p>
+          </div>
         </div>
-        <div class="top-actions">
-          <div class="auth-strip">
-            <span id="sessionStatus">Demo dispatcher</span>
-            <select id="loginUser">
-              <option value="dispatcher">Dispatcher</option>
-              <option value="manager">Manager</option>
-              <option value="technician">Technician</option>
-              <option value="admin">Admin</option>
-            </select>
-            <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN">
+
+        <nav class="tabs" aria-label="Views">
+          <button class="tab active" data-view="dispatch">Dispatch</button>
+          <button class="tab" data-view="dashboard">Dashboard</button>
+          <button class="tab" data-view="orders">Work Orders</button>
+          <button class="tab" data-view="techs">Technicians</button>
+          <button class="tab" data-view="types">Work Types</button>
+          <button class="tab" data-view="mobile">Technician View</button>
+        </nav>
+
+        <section class="metrics" id="metrics"></section>
+
+        <div class="auth-strip">
+          <span id="sessionStatus">Demo dispatcher</span>
+          <select id="loginUser" aria-label="Role">
+            <option value="dispatcher">Dispatcher</option>
+            <option value="manager">Manager</option>
+            <option value="technician">Technician</option>
+            <option value="admin">Admin</option>
+          </select>
+          <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN">
+          <div class="auth-actions">
             <button id="loginBtn" class="ghost">Login</button>
             <button id="logoutBtn" class="ghost">Logout</button>
           </div>
-          <button id="optimizeBtn" class="primary">Schedule with AI</button>
-          <details class="action-menu">
-            <summary>Planning tools</summary>
-            <div class="menu-panel">
-              <button id="generatePlanBtn" class="ghost">Morning AI Plan</button>
-              <button id="approvePlanBtn" class="ghost">Approve Plan</button>
-              <button id="rescheduleBtn" class="ghost">What Changed?</button>
-              <button id="undoBtn" class="ghost">Undo</button>
-              <button id="redoBtn" class="ghost">Redo</button>
-            </div>
-          </details>
-          <details class="action-menu admin-menu">
-            <summary>Admin / data</summary>
-            <div class="menu-panel">
-              <button id="exportBtn" class="ghost">Export / Backup</button>
-              <button id="importBtn" class="ghost">Import / Restore</button>
-              <button id="salesforceImportBtn" class="ghost">Salesforce Import</button>
-              <button id="salesforceExportBtn" class="ghost">Salesforce Export</button>
-              <button id="seedBtn" class="ghost">Reset Seed Data</button>
-            </div>
-          </details>
-          <input id="importFile" type="file" accept="application/json" hidden>
-          <input id="salesforceImportFile" type="file" accept="application/json" hidden>
         </div>
-      </header>
+      </aside>
 
-      <section class="metrics" id="metrics"></section>
+      <div class="workspace">
+        <header class="topbar">
+          <div class="page-title">
+            <h2>Dispatch Board</h2>
+            <p id="roleHint">Dispatch board for work orders, technicians, skills, and capacity.</p>
+          </div>
+          <div class="top-actions">
+            <button id="optimizeBtn" class="primary">Schedule with AI</button>
+            <details class="action-menu">
+              <summary>Planning</summary>
+              <div class="menu-panel">
+                <button id="generatePlanBtn" class="ghost">Morning AI Plan</button>
+                <button id="approvePlanBtn" class="ghost">Approve Plan</button>
+                <button id="rescheduleBtn" class="ghost">What Changed?</button>
+                <button id="undoBtn" class="ghost">Undo</button>
+                <button id="redoBtn" class="ghost">Redo</button>
+              </div>
+            </details>
+            <details class="action-menu admin-menu">
+              <summary>More</summary>
+              <div class="menu-panel">
+                <button id="exportBtn" class="ghost">Export / Backup</button>
+                <button id="importBtn" class="ghost">Import / Restore</button>
+                <button id="salesforceImportBtn" class="ghost">Salesforce Import</button>
+                <button id="salesforceExportBtn" class="ghost">Salesforce Export</button>
+                <button id="seedBtn" class="ghost">Reset Seed Data</button>
+              </div>
+            </details>
+            <input id="importFile" type="file" accept="application/json" hidden>
+            <input id="salesforceImportFile" type="file" accept="application/json" hidden>
+          </div>
+        </header>
 
-      <nav class="tabs" aria-label="Views">
-        <button class="tab active" data-view="dispatch">Dispatch Board</button>
-        <button class="tab" data-view="dashboard">Manager Dashboard</button>
-        <button class="tab" data-view="orders">Work Orders</button>
-        <button class="tab" data-view="techs">Technicians</button>
-        <button class="tab" data-view="types">Work Types</button>
-        <button class="tab" data-view="mobile">Technician View</button>
-      </nav>
-
-      <main>
+        <main>
         <section id="dispatch" class="view active">
           <div class="toolbar primary-toolbar">
             <div class="segmented">
@@ -281,7 +295,8 @@
           </div>
           <div id="mobileJobs" class="mobile-list"></div>
         </section>
-      </main>
+        </main>
+      </div>
     </div>
 
     <aside id="detailDrawer" class="drawer" aria-hidden="true">
