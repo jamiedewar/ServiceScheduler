@@ -541,10 +541,10 @@ function updateRoleHint() {
   if (!hint) return;
   const role = currentRole();
   const copy = {
-    technician: "Technician view for today's assigned jobs, progress, checklists, and notes.",
-    dispatcher: "Dispatch board for assigning work, balancing the day, and handling exceptions.",
-    manager: "Manager view with schedule health, dispatch controls, and master-data oversight.",
-    admin: "Admin view with full dispatch, configuration, import, export, and readiness tools."
+    technician: "Technician",
+    dispatcher: "Dispatcher",
+    manager: "Manager",
+    admin: "Admin"
   };
   hint.textContent = copy[role] || copy.dispatcher;
 }
