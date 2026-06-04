@@ -26,8 +26,9 @@ body {
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, ui-sans-serif, system-ui, sans-serif;
   background:
-    radial-gradient(circle at 20% 0%, rgba(0, 113, 227, .10), transparent 28%),
-    linear-gradient(135deg, #fbfbfd 0%, #eef1f5 58%, #f7f4ef 100%);
+    radial-gradient(circle at 18% -8%, rgba(255, 255, 255, .92), transparent 30%),
+    radial-gradient(circle at 88% 0%, rgba(0, 113, 227, .12), transparent 25%),
+    linear-gradient(145deg, #fbfbfd 0%, #f1f3f6 54%, #eceff3 100%);
   color: var(--ink);
 }
 
@@ -85,8 +86,8 @@ p { color: var(--muted); }
   gap: 18px;
   padding: 22px 16px;
   border-right: 1px solid var(--soft-line);
-  background: var(--sidebar);
-  backdrop-filter: blur(22px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .78), rgba(239, 242, 246, .68));
+  backdrop-filter: blur(26px) saturate(1.25);
 }
 
 .brand-block {
@@ -107,7 +108,7 @@ p { color: var(--muted); }
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background: linear-gradient(145deg, #1f2937, #3d4857);
+  background: linear-gradient(145deg, #050506, #343944);
   color: #fff;
   font-weight: 700;
   box-shadow: 0 10px 24px rgba(23, 25, 29, .18);
@@ -199,7 +200,7 @@ p { color: var(--muted); }
 
 .workspace {
   min-width: 0;
-  padding: 20px 24px 28px;
+  padding: 22px 28px 32px;
 }
 
 .topbar {
@@ -210,11 +211,11 @@ p { color: var(--muted); }
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin: -20px -24px 18px;
-  padding: 16px 24px 14px;
+  margin: -22px -28px 22px;
+  padding: 18px 28px 16px;
   border-bottom: 1px solid var(--soft-line);
-  background: rgba(251, 251, 253, .76);
-  backdrop-filter: blur(22px);
+  background: rgba(251, 251, 253, .82);
+  backdrop-filter: blur(26px) saturate(1.2);
 }
 
 .page-title p {
@@ -503,6 +504,11 @@ textarea {
   color: #11675e;
 }
 
+.chip.related {
+  background: #111318;
+  color: #fff;
+}
+
 .priority-Critical::before { background: var(--red); }
 .priority-High::before { background: var(--amber); }
 .priority-Medium::before { background: var(--blue); }
@@ -679,6 +685,29 @@ textarea {
   gap: 14px;
 }
 
+.orders-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 18px;
+  border: 1px solid var(--soft-line);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(245, 247, 250, .72));
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+.orders-head h2 {
+  font-size: 24px;
+}
+
+.orders-head p {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
 .split {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
@@ -700,6 +729,10 @@ textarea {
 }
 
 .batch-editor { grid-column: 1; }
+
+#orders .split {
+  grid-template-columns: 320px minmax(0, 1fr);
+}
 
 .form-actions {
   display: flex;
@@ -782,6 +815,67 @@ th {
   transform: translateX(100%);
   transition: transform .2s ease;
   backdrop-filter: blur(20px);
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  display: none;
+  place-items: center;
+  padding: 24px;
+  background: rgba(11, 13, 18, .28);
+  backdrop-filter: blur(18px);
+}
+
+.modal.open {
+  display: grid;
+}
+
+.modal-panel {
+  width: min(920px, 100%);
+  max-height: min(860px, calc(100vh - 48px));
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, .78);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 34px 90px rgba(15, 18, 25, .28);
+}
+
+.modal-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--soft-line);
+  background: rgba(255, 255, 255, .88);
+  backdrop-filter: blur(18px);
+}
+
+.modal-head h2 {
+  font-size: 24px;
+}
+
+.modal-head p {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.modal-editor {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 18px 22px 22px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.modal-editor .wide-field {
+  grid-column: 1 / -1;
 }
 
 .drawer.open { transform: translateX(0); }

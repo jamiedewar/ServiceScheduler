@@ -227,6 +227,33 @@ assert.strictEqual(continuity.techId, "tech-b", "scheduler should preserve conti
 assert(api.state.recommendations.some(r => r.body.includes("Continuity preserved")), "AI explanation should mention continuity preservation");
 
 api.setState(baseState([
+  order({
+    id: "WO-RELATED-BUILD",
+    title: "Partner build order",
+    customer: "Partner Marine",
+    boat: "Asset LB-500",
+    duration: 2,
+    status: "Scheduled",
+    techId: "tech-a",
+    scheduledDate: "2026-06-05",
+    start: "08:00",
+    segments: [{ techId: "tech-a", date: "2026-06-05", start: "08:00", duration: 2 }]
+  }),
+  order({
+    id: "WO-RELATED-PRERIG",
+    title: "Pre-rig related asset",
+    customer: "Partner Marine",
+    boat: "Asset LB-500",
+    duration: 2,
+    dueDate: "2026-06-06"
+  })
+]));
+api.optimizeSchedule();
+const relatedPreRig = api.state.orders.find(o => o.id === "WO-RELATED-PRERIG");
+assert.strictEqual(relatedPreRig.scheduledDate, "2026-06-05", "scheduler should group same-asset/same-customer work on the related scheduled day when possible");
+assert(api.state.recommendations.some(r => r.title.includes("WO-RELATED-PRERIG") && r.body.includes("Related work grouped")), "AI explanation should mention related-work grouping");
+
+api.setState(baseState([
   order({ id: "WO-MULTI", duration: 12 })
 ]));
 api.optimizeSchedule();

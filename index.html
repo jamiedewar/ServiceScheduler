@@ -180,41 +180,14 @@
         </section>
 
         <section id="orders" class="view">
+          <div class="orders-head">
+            <div>
+              <h2>Work Orders</h2>
+              <p>Create new work only when needed; keep the planning view focused on the schedule.</p>
+            </div>
+            <button id="createOrderBtn" class="primary" type="button">New Work Order</button>
+          </div>
           <div class="split">
-            <form id="orderForm" class="editor">
-              <h2>Create / Edit Work Order</h2>
-              <input type="hidden" id="orderId">
-              <label>Title <input id="orderTitle" required></label>
-              <label>Customer <input id="orderCustomer" placeholder="Customer, stock, or internal owner"></label>
-              <label>Dealer <input id="orderDealer" placeholder="Dealer name if applicable"></label>
-              <label>Boat / Unit / Ref <input id="orderBoat" required></label>
-              <label>Work Type <select id="orderType"></select></label>
-              <label>Priority <select id="orderPriority"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select></label>
-              <label>Customer Urgency <select id="orderUrgency"><option>Escalated</option><option>Delivery Promise</option><option selected>Normal</option><option>Flexible</option></select></label>
-              <label>Due Date <input type="date" id="orderDue" required></label>
-              <label>Duration (hours) <input type="number" id="orderDuration" min="0.5" step="0.5" required></label>
-              <label>Required Skills <input id="orderSkills" placeholder="Mechanical, Rigging"></label>
-              <label>Required Certifications <input id="orderCerts" placeholder="PDI Signoff, NMEA"></label>
-              <label>Preferred Technician <select id="orderPreferredTech"><option value="">No preference</option></select></label>
-              <label>Continuity Technician <select id="orderContinuityTech"><option value="">Auto from unit history</option></select></label>
-              <label>Earliest Start <input type="date" id="orderEarliestStart"></label>
-              <label>Parts Readiness
-                <select id="orderParts">
-                  <option>Ready</option>
-                  <option>Staged</option>
-                  <option>Waiting on Parts</option>
-                  <option>Backordered</option>
-                </select>
-              </label>
-              <label>Bay / Resource <select id="orderBay"></select></label>
-              <label>Status <select id="orderStatus"><option>Unscheduled</option><option>Scheduled</option><option>In Progress</option><option>Blocked</option><option>Complete</option></select></label>
-              <label>Description <textarea id="orderDescription"></textarea></label>
-              <label>Dependencies / Notes <textarea id="orderNotes"></textarea></label>
-              <div class="form-actions">
-                <button class="primary" type="submit">Save Work Order</button>
-                <button class="ghost" type="button" id="clearOrderBtn">Clear</button>
-              </div>
-            </form>
             <form id="batchForm" class="editor batch-editor">
               <h2>Batch Work Orders</h2>
               <label>Paste Jobs
@@ -231,6 +204,51 @@
                 <thead><tr><th>Order</th><th>Type</th><th>Priority / Urgency</th><th>Due</th><th>Skills</th><th>Parts / Bay</th><th>Status</th><th></th></tr></thead>
                 <tbody id="ordersTable"></tbody>
               </table>
+            </div>
+          </div>
+
+          <div id="orderModal" class="modal" aria-hidden="true">
+            <div class="modal-panel">
+              <div class="modal-head">
+                <div>
+                  <h2>Create / Edit Work Order</h2>
+                  <p>Capture the details that affect scheduling.</p>
+                </div>
+                <button id="closeOrderModalBtn" class="ghost" type="button">Close</button>
+              </div>
+              <form id="orderForm" class="editor modal-editor">
+                <input type="hidden" id="orderId">
+                <label>Title <input id="orderTitle" required></label>
+                <label>Customer <input id="orderCustomer" placeholder="Customer, stock, or internal owner"></label>
+                <label>Dealer <input id="orderDealer" placeholder="Dealer name if applicable"></label>
+                <label>Boat / Unit / Ref <input id="orderBoat" required></label>
+                <label>Work Type <select id="orderType"></select></label>
+                <label>Priority <select id="orderPriority"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select></label>
+                <label>Customer Urgency <select id="orderUrgency"><option>Escalated</option><option>Delivery Promise</option><option selected>Normal</option><option>Flexible</option></select></label>
+                <label>Due Date <input type="date" id="orderDue" required></label>
+                <label>Earliest Start <input type="date" id="orderEarliestStart"></label>
+                <label>Duration (hours) <input type="number" id="orderDuration" min="0.5" step="0.5" required></label>
+                <label>Required Skills <input id="orderSkills" placeholder="Mechanical, Rigging"></label>
+                <label>Required Certifications <input id="orderCerts" placeholder="PDI Signoff, NMEA"></label>
+                <label>Preferred Technician <select id="orderPreferredTech"><option value="">No preference</option></select></label>
+                <label>Continuity Technician <select id="orderContinuityTech"><option value="">Auto from unit history</option></select></label>
+                <label>Parts Readiness
+                  <select id="orderParts">
+                    <option>Ready</option>
+                    <option>Staged</option>
+                    <option>Waiting on Parts</option>
+                    <option>Backordered</option>
+                  </select>
+                </label>
+                <label>Bay / Resource <select id="orderBay"></select></label>
+                <label>Status <select id="orderStatus"><option>Unscheduled</option><option>Scheduled</option><option>In Progress</option><option>Blocked</option><option>Complete</option></select></label>
+                <label class="wide-field">Description <textarea id="orderDescription"></textarea></label>
+                <label class="wide-field">Dependencies / Notes <textarea id="orderNotes"></textarea></label>
+                <div class="form-actions wide-field">
+                  <button class="primary" type="submit">Save Work Order</button>
+                  <button class="ghost" type="button" id="clearOrderBtn">Cancel</button>
+                </div>
+              </form>
             </div>
           </div>
         </section>

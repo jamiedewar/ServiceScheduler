@@ -632,13 +632,15 @@ function bindEvents() {
   document.getElementById("saveViewBtn").addEventListener("click", saveCurrentView);
   document.getElementById("applySavedViewBtn").addEventListener("click", applySavedView);
   document.getElementById("closeDrawerBtn").addEventListener("click", closeDrawer);
+  document.getElementById("createOrderBtn").addEventListener("click", openNewOrderModal);
+  document.getElementById("closeOrderModalBtn").addEventListener("click", closeOrderModal);
   document.getElementById("orderType").addEventListener("change", applyTypeDefaults);
   document.getElementById("orderForm").addEventListener("submit", saveOrder);
   document.getElementById("batchForm").addEventListener("submit", saveBatchOrders);
   document.getElementById("techForm").addEventListener("submit", saveTech);
   document.getElementById("bayForm").addEventListener("submit", saveBay);
   document.getElementById("typeForm").addEventListener("submit", saveType);
-  document.getElementById("clearOrderBtn").addEventListener("click", clearOrderForm);
+  document.getElementById("clearOrderBtn").addEventListener("click", () => { clearOrderForm(); closeOrderModal(); });
   document.getElementById("sampleBatchBtn").addEventListener("click", fillSampleBatch);
   document.getElementById("clearTechBtn").addEventListener("click", clearTechForm);
   document.getElementById("clearBayBtn").addEventListener("click", clearBayForm);
@@ -747,12 +749,13 @@ function renderQueue() {
 
 function jobCard(o) {
   const party = [o.customer, o.dealer].filter(Boolean).join(" / ");
+  const relatedCount = relatedOrdersFor(o).length;
   return `<article class="job-card priority-${o.priority} ${state.selectedOrderId === o.id ? "selected" : ""}" draggable="true" data-drag-order="${o.id}">
     <div class="job-title">${o.title}</div>
     <div class="job-meta"><span>${o.id}</span><span>${party || o.boat}</span><span>${o.duration}h</span><span>Due ${o.dueDate}</span>${o.earliestStartDate ? `<span>${earliestStartText(o)}</span>` : ""}</div>
     <div class="job-meta"><span>${o.boat}</span></div>
     <div class="job-meta"><span>${o.parts}</span><span>${o.bay}</span></div>
-    <div class="chips">${o.skills.map(s => `<span class="chip">${s}</span>`).join("")}</div>
+    <div class="chips">${relatedCount ? `<span class="chip related">${relatedCount} related</span>` : ""}${o.skills.map(s => `<span class="chip">${s}</span>`).join("")}</div>
     <button data-select-order="${o.id}">${state.selectedOrderId === o.id ? "Selected" : "Select"}</button>
     <button data-detail-order="${o.id}">Details</button>
   </article>`;
@@ -880,8 +883,9 @@ function renderOrders() {
   document.getElementById("ordersTable").innerHTML = filteredOrders(state.orders).sort(byDuePriority).map(o => {
     const tech = state.technicians.find(t => t.id === o.techId);
     const party = [o.customer, o.dealer].filter(Boolean).join(" / ");
+    const relatedCount = relatedOrdersFor(o).length;
     return `<tr>
-      <td><strong>${o.title}</strong><br><span class="job-meta">${o.id} | ${party || "No customer/dealer"} | ${o.boat}</span></td>
+      <td><strong>${o.title}</strong><br><span class="job-meta">${o.id} | ${party || "No customer/dealer"} | ${o.boat}${relatedCount ? ` | ${relatedCount} related` : ""}</span></td>
       <td>${o.workType}</td><td>${o.priority}<br><span class="job-meta">${o.customerUrgency || "Normal"}</span></td><td>${o.dueDate}${o.earliestStartDate ? `<br><span class="job-meta">Earliest ${o.earliestStartDate}</span>` : ""}</td>
       <td>${o.skills.map(s => `<span class="chip">${s}</span>`).join(" ")} ${(o.requiredCertifications || []).map(s => `<span class="chip cert">${s}</span>`).join(" ")}</td>
       <td>${o.parts}<br><span class="job-meta">${o.bay}</span></td>
@@ -1092,12 +1096,64 @@ function continuityTechIdFor(order) {
   const related = state.orders
     .filter(candidate =>
       candidate.id !== order.id &&
-      candidate.boat === order.boat &&
+      isRelatedOrder(order, candidate) &&
       candidate.techId &&
       ["Scheduled", "In Progress", "Blocked", "Complete"].includes(candidate.status)
     )
     .sort((a, b) => scheduleSignature(b).localeCompare(scheduleSignature(a)));
   return related[0]?.techId || "";
+}
+
+function normalizedRelationValue(value = "") {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function relationKeysFor(order) {
+  const keys = new Set();
+  const asset = normalizedRelationValue(order.boat);
+  const customer = normalizedRelationValue(order.customer || order.dealer);
+  if (asset) keys.add(`asset:${asset}`);
+  if (customer) keys.add(`party:${customer}`);
+  return keys;
+}
+
+function isRelatedOrder(a, b) {
+  if (!a || !b || a.id === b.id) return false;
+  const aKeys = relationKeysFor(a);
+  return [...relationKeysFor(b)].some(key => aKeys.has(key));
+}
+
+function relatedOrdersFor(order) {
+  return state.orders.filter(candidate => isRelatedOrder(order, candidate));
+}
+
+function relatedScheduleContext(order, day, techId = "") {
+  const related = relatedOrdersFor(order).filter(candidate => scheduleSegments(candidate).length);
+  let score = 0;
+  const matches = [];
+  related.forEach(candidate => {
+    scheduleSegments(candidate).forEach(segment => {
+      const dayDelta = Math.abs(Math.round((new Date(`${segment.date}T00:00:00`) - new Date(`${day}T00:00:00`)) / MS_DAY));
+      if (dayDelta === 0) {
+        score += 34;
+        matches.push(`${candidate.id} same day`);
+      } else if (dayDelta === 1) {
+        score += 16;
+        matches.push(`${candidate.id} adjacent day`);
+      }
+      if (techId && segment.techId === techId) score += 8;
+    });
+  });
+  return { score, matches: [...new Set(matches)] };
+}
+
+function targetDaysForOrder(order, targetDays) {
+  const relatedDays = new Set(
+    relatedOrdersFor(order)
+      .flatMap(candidate => scheduleSegments(candidate).map(segment => segment.date))
+      .filter(day => targetDays.includes(day) && canStartOnDate(order, day))
+  );
+  return [...relatedDays, ...targetDays.filter(day => !relatedDays.has(day))];
 }
 
 function isTechAbsent(techId, day) {
@@ -1131,6 +1187,7 @@ function renderDrawer() {
   drawer.classList.add("open");
   drawer.setAttribute("aria-hidden", "false");
   document.getElementById("drawerTitle").textContent = `${order.id} ${order.title}`;
+  const related = relatedOrdersFor(order);
   document.getElementById("drawerBody").innerHTML = `
     <section class="drawer-section">
       <h3>Summary</h3>
@@ -1139,6 +1196,7 @@ function renderDrawer() {
       <p>${order.workType} | ${order.priority} | ${order.customerUrgency || "Normal"} urgency | Due ${order.dueDate}${order.earliestStartDate ? ` | Earliest start ${order.earliestStartDate}` : ""}</p>
       <p>${tech ? `Assigned to ${tech.name}: ${scheduleSignature(order)}` : "Unassigned"}</p>
       <p>${continuityTechIdFor(order) ? `Continuity target: ${techName(continuityTechIdFor(order))}` : "Continuity target: auto from unit history"}</p>
+      ${related.length ? `<p>Related work: ${related.slice(0, 4).map(item => `${item.id} ${item.workType}`).join(", ")}</p>` : ""}
       <div class="chips">${(order.requiredCertifications || []).map(c => `<span class="chip cert">${c}</span>`).join("")}</div>
       <div class="drawer-grid">
         <label>Parts <select data-update-field="parts">${["Ready", "Staged", "Waiting on Parts", "Backordered"].map(v => `<option ${order.parts === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
@@ -1590,9 +1648,11 @@ function optimizeSchedule() {
         const load = utilizationFor(tech.id, targetDays);
         const loadScore = Math.max(0, 25 - load / 5) * weights.utilization;
         const warrantyScore = state.schedulerMode === "warranty" && order.workType === "Warranty Repair" ? 35 : 0;
+        const relatedContext = relatedScheduleContext(order, day, tech.id);
+        const relatedScore = relatedContext.score * weights.continuity;
         const capacityPenalty = plan.segments.length ? 0 : 100;
-        const score = skillScore + certScore + preferredScore + continuityScore + urgencyScore + priorityScore + dueScore + loadScore + warrantyScore - capacityPenalty - plan.absencePenalty;
-        candidates.push({ tech, day, slot: first ? minutes(first.start) : null, segments: plan.segments, missing, certMissing, score, plannedDuration: effectiveDuration(order), continuityTechId, continuityScore, urgencyScore });
+        const score = skillScore + certScore + preferredScore + continuityScore + relatedScore + urgencyScore + priorityScore + dueScore + loadScore + warrantyScore - capacityPenalty - plan.absencePenalty;
+        candidates.push({ tech, day, slot: first ? minutes(first.start) : null, segments: plan.segments, missing, certMissing, score, plannedDuration: effectiveDuration(order), continuityTechId, continuityScore, urgencyScore, relatedContext, relatedScore });
       });
     candidates.sort((a, b) => b.score - a.score);
     const best = candidates.find(c => c.segments.length) || candidates[0];
@@ -1624,13 +1684,14 @@ function optimizeSchedule() {
     const multiDay = best.segments.length > 1 ? ` Multi-day plan: ${best.segments.map(s => `${s.date} ${s.start} (${s.duration}h)`).join(", ")}.` : "";
     const preferred = order.preferredTechId === best.tech.id ? " Preferred technician matched." : "";
     const continuity = best.continuityTechId === best.tech.id ? ` Continuity preserved with ${best.tech.name}.` : "";
+    const relatedText = best.relatedContext?.matches?.length ? ` Related work grouped near ${best.relatedContext.matches.join(", ")}.` : "";
     const urgency = ` Customer urgency ${order.customerUrgency || "Normal"} contributed ${Math.round(best.urgencyScore || 0)} points.`;
     const level = best.missing.length || best.certMissing.length ? "warning" : "";
     const dependencyText = dependencyWindow.reasons.length ? ` Dependency-aware sequencing: ${dependencyWindow.reasons.join("; ")}.` : "";
     notes.push({
       level,
       title: `${order.id} -> ${best.tech.name} on ${best.day} at ${order.start}`,
-      body: `${fit}${certFit}${preferred}${continuity} Parts are ${order.parts}; ${order.bay} has capacity.${dependencyText}${multiDay} ${state.schedulerMode} mode used ${best.plannedDuration}h planned duration. Chosen for ${best.tech.area} availability, ${order.priority.toLowerCase()} priority, ${urgency} due ${order.dueDate}, and workload balance. Score ${Math.round(best.score)}.`
+      body: `${fit}${certFit}${preferred}${continuity}${relatedText} Parts are ${order.parts}; ${order.bay} has capacity.${dependencyText}${multiDay} ${state.schedulerMode} mode used ${best.plannedDuration}h planned duration. Chosen for ${best.tech.area} availability, ${order.priority.toLowerCase()} priority, ${urgency} due ${order.dueDate}, and workload balance. Score ${Math.round(best.score)}.`
     });
     pending.splice(index, 1);
     pendingIds.delete(order.id);
@@ -2243,7 +2304,7 @@ function findScheduleForOrder(order, tech, targetDays, dependencyWindow, schedul
   let remaining = effectiveDuration(order);
   const segments = [];
   let absencePenalty = 0;
-  for (const day of targetDays) {
+  for (const day of targetDaysForOrder(order, targetDays)) {
     if (day < dependencyWindow.day || remaining <= 0) continue;
     if (!canStartOnDate(order, day)) continue;
     if (isTechAbsent(tech.id, day)) {
@@ -2452,6 +2513,23 @@ function applyTypeDefaults() {
   document.getElementById("orderBay").value = bayForWorkType(t.name);
 }
 
+function openOrderModal() {
+  const modal = document.getElementById("orderModal");
+  modal?.classList.add("open");
+  modal?.setAttribute("aria-hidden", "false");
+}
+
+function closeOrderModal() {
+  const modal = document.getElementById("orderModal");
+  modal?.classList.remove("open");
+  modal?.setAttribute("aria-hidden", "true");
+}
+
+function openNewOrderModal() {
+  clearOrderForm();
+  openOrderModal();
+}
+
 function saveOrder(e) {
   e.preventDefault();
   snapshot();
@@ -2491,11 +2569,12 @@ function saveOrder(e) {
     state.orders.push({ ...data, operations: operationsForWorkType(data.workType), checklist: checklistForWorkType(data.workType), dependencies: dependencyHint(data.workType), actualHours: 0, timeEntries: [], rework: false, qualityHold: false, unitHistory: [`${id} created for ${data.customer || data.dealer || data.boat}`], attachments: [] });
     audit(`${id} created`);
   }
-  clearOrderForm(); render();
+  clearOrderForm(); closeOrderModal(); render();
 }
 function editOrder(id) {
   const o = state.orders.find(x => x.id === id);
   showView("orders");
+  openOrderModal();
   document.getElementById("orderId").value = o.id;
   document.getElementById("orderTitle").value = o.title;
   document.getElementById("orderCustomer").value = o.customer || "";
