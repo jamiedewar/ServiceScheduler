@@ -660,6 +660,7 @@ def comparable_schedule(order: dict[str, Any]) -> dict[str, Any]:
     "segments": order.get("segments") or [],
     "bay": order.get("bay", ""),
     "parts": order.get("parts", ""),
+    "earliestStartDate": order.get("earliestStartDate", ""),
     "customerUrgency": order.get("customerUrgency", "Normal"),
     "continuityTechId": order.get("continuityTechId", ""),
     "actualHours": order.get("actualHours", 0),
@@ -1121,6 +1122,9 @@ def validate_state_integrity(state: dict[str, Any]) -> list[dict[str, Any]]:
     for segment in schedule_segments(order):
       tech_id = segment.get("techId")
       day = segment.get("date")
+      earliest_start = order.get("earliestStartDate") or ""
+      if earliest_start and day and day < earliest_start:
+        add("error", "schedule.before_earliest_start", f"{order_id} is scheduled before earliest start date {earliest_start}.", order_id)
       start = parse_minutes(segment.get("start") or "")
       duration = float(segment.get("duration") or order.get("duration") or 0)
       end = start + round(duration * 60)
@@ -2108,6 +2112,7 @@ def normalize_salesforce_import(payload: dict[str, Any]) -> list[dict[str, Any]]
         "priority": record.get("priority") or record.get("Priority") or "Medium",
         "customerUrgency": record.get("customerUrgency") or record.get("CustomerUrgency") or record.get("Urgency") or "Normal",
         "dueDate": record.get("dueDate") or record.get("DueDate") or "",
+        "earliestStartDate": record.get("earliestStartDate") or record.get("EarliestStartDate") or record.get("ReadyDate") or record.get("DropoffDate") or record.get("ArrivalDate") or "",
         "duration": float(record.get("duration") or record.get("EstimatedDuration") or 2),
         "durationLocked": bool(record.get("duration") or record.get("EstimatedDuration")),
         "skills": list_field(record.get("skills") or record.get("Skills") or record.get("RequiredSkills")),
@@ -2182,6 +2187,7 @@ def salesforce_export_payload(state: dict[str, Any]) -> dict[str, Any]:
         "Priority": order.get("priority") or "Medium",
         "CustomerUrgency": order.get("customerUrgency") or "Normal",
         "DueDate": order.get("dueDate") or "",
+        "EarliestStartDate": order.get("earliestStartDate") or "",
         "EstimatedDuration": float(order.get("duration") or 0),
         "ActualHours": float(order.get("actualHours") or 0),
         "TimeEntries": order.get("timeEntries") or [],

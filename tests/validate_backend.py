@@ -571,6 +571,7 @@ def main() -> None:
           "AssetName": "21 XTR",
           "Priority": "High",
           "EstimatedDuration": 3,
+          "EarliestStartDate": "2026-06-04",
           "ActualHours": 2.5,
           "PartsReadiness": "Staged",
           "Bay": "Service Bay 1",
@@ -598,6 +599,7 @@ def main() -> None:
       assert imported[0]["boat"] == "21 XTR"
       assert imported[0]["status"] == "Scheduled"
       assert imported[0]["actualHours"] == 2.5
+      assert imported[0]["earliestStartDate"] == "2026-06-04"
       assert imported[0]["parts"] == "Staged"
       assert imported[0]["segments"][0]["start"] == "09:00"
       assert imported[0]["operations"][0]["name"] == "Inspect"
@@ -627,9 +629,17 @@ def main() -> None:
       first_export = salesforce_export["records"][0]
       assert "WorkOrderNumber" in first_export
       assert "PartsReadiness" in first_export
+      assert "EarliestStartDate" in first_export
       assert "ScheduleSegments" in first_export
       assert "AccountName" in first_export
       assert "DealerName" in first_export
+      early_start_state = backend.get_state(conn)
+      early_start_state["orders"][0]["earliestStartDate"] = "2026-06-05"
+      early_start_state["orders"][0]["status"] = "Scheduled"
+      early_start_state["orders"][0]["scheduledDate"] = "2026-06-04"
+      early_start_state["orders"][0]["start"] = "08:00"
+      early_start_state["orders"][0]["segments"] = [{"techId": "tech-test", "date": "2026-06-04", "start": "08:00", "duration": 2}]
+      assert any(finding["code"] == "schedule.before_earliest_start" for finding in backend.validate_state_integrity(early_start_state))
       attachment = backend.save_attachment(
         conn,
         "WO-TEST",

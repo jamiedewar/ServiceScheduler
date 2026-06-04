@@ -136,7 +136,7 @@ function order(id, title, boat, workType, priority, due, description, notes) {
   const customerUrgency = notes?.toLowerCase().includes("vetta") || description?.toLowerCase().includes("delivery") ? "Escalated" : "Normal";
   const party = inferCustomerDealer(boat);
   return {
-    id, title, customer: party.customer, dealer: party.dealer, boat, description, workType, priority, customerUrgency, dueDate: due,
+    id, title, customer: party.customer, dealer: party.dealer, boat, description, workType, priority, customerUrgency, dueDate: due, earliestStartDate: "",
     duration: wt?.duration || 2, skills: wt?.skills || [], status: "Unscheduled",
     techId: "", scheduledDate: "", start: "", notes,
     parts: partsForWorkType(workType, id),
@@ -252,6 +252,7 @@ function normalizeState(data) {
     priority: "Medium",
     customerUrgency: "Normal",
     dueDate: data.boardDate || fmtDate(new Date()),
+    earliestStartDate: "",
     duration: 2,
     durationLocked: false,
     skills: [],
@@ -561,6 +562,14 @@ function byDuePriority(a, b) {
   return priorityWeight(b.priority) - priorityWeight(a.priority) || urgencyWeight(b.customerUrgency) - urgencyWeight(a.customerUrgency) || new Date(a.dueDate) - new Date(b.dueDate);
 }
 
+function canStartOnDate(order, day) {
+  return !order.earliestStartDate || day >= order.earliestStartDate;
+}
+
+function earliestStartText(order) {
+  return order.earliestStartDate ? `Earliest ${order.earliestStartDate}` : "";
+}
+
 async function init() {
   if (typeof window !== "undefined") {
     window.addEventListener?.("error", event => logError(event.message || "Unhandled browser error"));
@@ -740,7 +749,7 @@ function jobCard(o) {
   const party = [o.customer, o.dealer].filter(Boolean).join(" / ");
   return `<article class="job-card priority-${o.priority} ${state.selectedOrderId === o.id ? "selected" : ""}" draggable="true" data-drag-order="${o.id}">
     <div class="job-title">${o.title}</div>
-    <div class="job-meta"><span>${o.id}</span><span>${party || o.boat}</span><span>${o.duration}h</span><span>Due ${o.dueDate}</span></div>
+    <div class="job-meta"><span>${o.id}</span><span>${party || o.boat}</span><span>${o.duration}h</span><span>Due ${o.dueDate}</span>${o.earliestStartDate ? `<span>${earliestStartText(o)}</span>` : ""}</div>
     <div class="job-meta"><span>${o.boat}</span></div>
     <div class="job-meta"><span>${o.parts}</span><span>${o.bay}</span></div>
     <div class="chips">${o.skills.map(s => `<span class="chip">${s}</span>`).join("")}</div>
@@ -873,7 +882,7 @@ function renderOrders() {
     const party = [o.customer, o.dealer].filter(Boolean).join(" / ");
     return `<tr>
       <td><strong>${o.title}</strong><br><span class="job-meta">${o.id} | ${party || "No customer/dealer"} | ${o.boat}</span></td>
-      <td>${o.workType}</td><td>${o.priority}<br><span class="job-meta">${o.customerUrgency || "Normal"}</span></td><td>${o.dueDate}</td>
+      <td>${o.workType}</td><td>${o.priority}<br><span class="job-meta">${o.customerUrgency || "Normal"}</span></td><td>${o.dueDate}${o.earliestStartDate ? `<br><span class="job-meta">Earliest ${o.earliestStartDate}</span>` : ""}</td>
       <td>${o.skills.map(s => `<span class="chip">${s}</span>`).join(" ")} ${(o.requiredCertifications || []).map(s => `<span class="chip cert">${s}</span>`).join(" ")}</td>
       <td>${o.parts}<br><span class="job-meta">${o.bay}</span></td>
       <td>${o.status}<br><span class="job-meta">${tech ? `${tech.name} ${scheduleSegments(o).map(s => `${s.date} ${s.start}`).join(", ")}` : ""}</span></td>
@@ -1059,6 +1068,7 @@ function scheduleRisks() {
   const today = fmtDate(new Date());
   state.orders.forEach(o => {
     if (o.status !== "Complete" && o.dueDate < today) risks.push({ level: "error", title: `${o.id} overdue`, body: `${o.title} was due ${o.dueDate}.` });
+    if (o.earliestStartDate && scheduleSegments(o).some(segment => segment.date < o.earliestStartDate)) risks.push({ level: "error", title: `${o.id} before earliest start`, body: `${o.title} is scheduled before ${o.earliestStartDate}.` });
     if (["Waiting on Parts", "Backordered"].includes(o.parts) && o.priority !== "Low") risks.push({ level: "warning", title: `${o.id} waiting on parts`, body: `${o.priority} priority ${o.workType} is ${o.parts}.` });
     if (o.qualityHold) risks.push({ level: "error", title: `${o.id} quality hold`, body: `${o.title} is on quality hold.` });
     if (o.rework) risks.push({ level: "warning", title: `${o.id} rework`, body: `${o.title} is flagged as rework.` });
@@ -1126,7 +1136,7 @@ function renderDrawer() {
       <h3>Summary</h3>
       <p>${[order.customer, order.dealer].filter(Boolean).join(" / ") || "No customer/dealer recorded"}</p>
       <p>${order.boat}</p>
-      <p>${order.workType} | ${order.priority} | ${order.customerUrgency || "Normal"} urgency | Due ${order.dueDate}</p>
+      <p>${order.workType} | ${order.priority} | ${order.customerUrgency || "Normal"} urgency | Due ${order.dueDate}${order.earliestStartDate ? ` | Earliest start ${order.earliestStartDate}` : ""}</p>
       <p>${tech ? `Assigned to ${tech.name}: ${scheduleSignature(order)}` : "Unassigned"}</p>
       <p>${continuityTechIdFor(order) ? `Continuity target: ${techName(continuityTechIdFor(order))}` : "Continuity target: auto from unit history"}</p>
       <div class="chips">${(order.requiredCertifications || []).map(c => `<span class="chip cert">${c}</span>`).join("")}</div>
@@ -1851,6 +1861,7 @@ function salesforceExportPayload(sourceState) {
       Priority: order.priority || "Medium",
       CustomerUrgency: order.customerUrgency || "Normal",
       DueDate: order.dueDate || "",
+      EarliestStartDate: order.earliestStartDate || "",
       EstimatedDuration: Number(order.duration || 0),
       ActualHours: Number(order.actualHours || 0),
       TimeEntries: order.timeEntries || [],
@@ -2013,6 +2024,7 @@ function normalizeSalesforceRecords(payload) {
       priority: record.priority || record.Priority || "Medium",
       customerUrgency: record.customerUrgency || record.CustomerUrgency || record.Urgency || "Normal",
       dueDate: record.dueDate || record.DueDate || state.boardDate,
+      earliestStartDate: record.earliestStartDate || record.EarliestStartDate || record.ReadyDate || record.DropoffDate || record.ArrivalDate || "",
       duration: Number(record.duration || record.EstimatedDuration || learnedDurationForType(wt) || 2),
       durationLocked: Boolean(record.duration || record.EstimatedDuration),
       skills: arrayField(record.skills || record.Skills || record.RequiredSkills, [...(wt?.skills || [])]),
@@ -2233,6 +2245,7 @@ function findScheduleForOrder(order, tech, targetDays, dependencyWindow, schedul
   let absencePenalty = 0;
   for (const day of targetDays) {
     if (day < dependencyWindow.day || remaining <= 0) continue;
+    if (!canStartOnDate(order, day)) continue;
     if (isTechAbsent(tech.id, day)) {
       absencePenalty += 60;
       continue;
@@ -2322,6 +2335,7 @@ function validateManualAssignment(order, techId, day, start) {
   const warnings = [];
   if (!tech) errors.push("Choose an active technician.");
   if (!isPartsSchedulable(order)) errors.push(`${order.id} parts readiness is ${order.parts}.`);
+  if (!canStartOnDate(order, day)) warnings.push(`${order.id} cannot normally start before ${order.earliestStartDate}.`);
   if (tech && isTechAbsent(tech.id, day)) errors.push(`${tech.name} is marked absent on ${day}.`);
   const missing = tech ? order.skills.filter(s => !tech.skills.includes(s)) : order.skills;
   if (missing.length) warnings.push(`${tech?.name || "Technician"} is missing skills: ${missing.join(", ")}.`);
@@ -2453,6 +2467,7 @@ function saveOrder(e) {
     priority: document.getElementById("orderPriority").value,
     customerUrgency: document.getElementById("orderUrgency").value,
     dueDate: document.getElementById("orderDue").value,
+    earliestStartDate: document.getElementById("orderEarliestStart").value,
     duration: Number(document.getElementById("orderDuration").value),
     durationLocked: true,
     skills: parseList(document.getElementById("orderSkills").value),
@@ -2490,6 +2505,7 @@ function editOrder(id) {
   document.getElementById("orderPriority").value = o.priority;
   document.getElementById("orderUrgency").value = o.customerUrgency || "Normal";
   document.getElementById("orderDue").value = o.dueDate;
+  document.getElementById("orderEarliestStart").value = o.earliestStartDate || "";
   document.getElementById("orderDuration").value = o.duration;
   document.getElementById("orderSkills").value = o.skills.join(", ");
   document.getElementById("orderCerts").value = (o.requiredCertifications || []).join(", ");

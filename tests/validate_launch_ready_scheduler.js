@@ -290,6 +290,16 @@ const absent = api.state.orders.find(o => o.id === "WO-ABSENT");
 assert(!api.scheduleSegments(absent).some(s => s.techId === "tech-a" && s.date === "2026-06-03"), "scheduler should not place work on an absent technician's day");
 
 api.setState(baseState([
+  order({ id: "WO-GATED", duration: 2, earliestStartDate: "2026-06-05" })
+]));
+api.optimizeSchedule();
+const earliestGated = api.state.orders.find(o => o.id === "WO-GATED");
+assert.strictEqual(earliestGated.status, "Scheduled", "earliest-start gated work should still schedule when capacity exists");
+assert(api.scheduleSegments(earliestGated).every(s => s.date >= "2026-06-05"), "scheduler should not place work before the earliest start date");
+const gateValidation = api.validateManualAssignment(order({ id: "WO-GATE-MANUAL", duration: 2, earliestStartDate: "2026-06-05" }), "tech-a", "2026-06-04", "08:00");
+assert(gateValidation.warnings.some(e => e.includes("cannot normally start before 2026-06-05")), "manual assignment should warn before overriding earliest start");
+
+api.setState(baseState([
   order({ id: "WO-BAY-OUTAGE", duration: 2, bay: "Service Bay 1", status: "Unscheduled" })
 ], {
   bayAvailability: {
